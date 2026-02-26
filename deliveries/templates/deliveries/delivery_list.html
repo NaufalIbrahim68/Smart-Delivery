@@ -53,26 +53,12 @@
     </div>
 </div>
 
-<form id="bulkUpdateForm" method="post" action="{% url 'deliveries:delivery_bulk_update' %}">
-    {% csrf_token %}
-    <div class="mb-2 d-flex justify-content-start align-items-center gap-2">
-        <select name="bulk_status" class="form-select form-select-sm w-auto" required>
-            <option value="">-- Apply Status to Selected --</option>
-            {% for code, label in status_choices %}
-            <option value="{{ code }}">{{ label }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Apply status to selected deliveries?');">
-            <i class="bi bi-check2-all me-1"></i> Apply Status
-        </button>
-    </div>
-
+<div>
     <div class="card table-card">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th width="40"><input type="checkbox" id="selectAll" class="form-check-input"></th>
                         <th>Tracking #</th>
                     <th>Recipient</th>
                     <th>Vendor</th>
@@ -87,7 +73,6 @@
             <tbody>
                 {% for delivery in deliveries %}
                 <tr class="{% if delivery.status == 'delayed' %}risk-high{% endif %}">
-                    <td><input type="checkbox" name="delivery_ids" value="{{ delivery.pk }}" class="form-check-input row-checkbox"></td>
                     <td class="fw-bold">
                         <a href="#" data-bs-toggle="modal" data-bs-target="#deliveryModal{{ delivery.pk }}" class="text-decoration-none">
                             {{ delivery.tracking_number }}
@@ -266,19 +251,5 @@
     </div>
     {% endif %}
     </div>
-</form>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function elementReady() {
-        const selectAll = document.getElementById('selectAll');
-        if(selectAll) {
-            selectAll.addEventListener('change', function() {
-                let checkboxes = document.querySelectorAll('.row-checkbox');
-                for (let cb of checkboxes) {
-                    cb.checked = this.checked;
-                }
-            });
-        }
-    });
-</script>
+</div>
 {% endblock %}

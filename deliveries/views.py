@@ -93,34 +93,6 @@ def delivery_create(request):
 
 
 
-@login_required
-def delivery_bulk_update(request):
-    if request.method == 'POST':
-        delivery_ids = request.POST.getlist('delivery_ids')
-        new_status = request.POST.get('bulk_status')
-        if delivery_ids and new_status:
-            # Exclude deliveries locked as 'delayed' (actual_delivery_date > scheduled_date)
-            all_qs = Delivery.objects.filter(id__in=delivery_ids)
-            locked_qs = all_qs.filter(
-                status=Delivery.STATUS_DELAYED,
-                actual_delivery_date__isnull=False
-            )
-            unlocked_qs = all_qs.exclude(id__in=locked_qs.values('id'))
-            locked_count = locked_qs.count()
-            updated_count = unlocked_qs.update(status=new_status)
-
-            if updated_count:
-                messages.success(request, f'✅ Status updated for {updated_count} deliveries.')
-            if locked_count:
-                messages.warning(
-                    request,
-                    f'⚠️ {locked_count} delivery(ies) skipped — status is locked as Delayed '
-                    f'because actual delivery exceeded the scheduled date.'
-                )
-        else:
-            messages.warning(request, '⚠️ Please select deliveries and a status to update.')
-    return redirect('deliveries:delivery_list')
-
 
 @login_required
 def export_pdf(request):

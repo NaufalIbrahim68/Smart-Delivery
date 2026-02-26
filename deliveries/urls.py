@@ -8,7 +8,6 @@ urlpatterns = [
     path('', views.delivery_list, name='delivery_list'),
     path('delivery/<int:pk>/', views.delivery_detail, name='delivery_detail'),
     path('delivery/create/', views.delivery_create, name='delivery_create'),
-    path('delivery/bulk-update/', views.delivery_bulk_update, name='delivery_bulk_update'),
     path('delivery/export-pdf/', views.export_pdf, name='export_pdf'),
     # Phase 2B — Public Tracking
     path('track/', views.track_delivery, name='track_delivery'),
