@@ -17,4 +17,5 @@ urlpatterns = [
 
     # Phase 5 — AI Prediction
     path('predict/', views.predict_delay, name='predict_delay'),
+    path('api/predict/', views.api_predict, name='api_predict'),
 ]

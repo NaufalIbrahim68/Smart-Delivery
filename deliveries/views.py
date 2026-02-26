@@ -8,6 +8,9 @@ from .forms import DeliveryForm, ExcelUploadForm
 import pandas as pd
 import json
 import os
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .services import PredictionService
 
 
 # -----------------------------------------------
@@ -316,3 +319,50 @@ def predict_delay(request):
         'accuracy':          accuracy,
         'vendors':           vendors,
     })
+
+
+@csrf_exempt
+def api_predict(request):
+    """
+    POST /api/predict/
+    Input JSON: order_to_sched, weight_kg, quantity, origin_city, destination_city, vendor_name
+    return prediction result (On Time / Late Risk)
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        
+        order_to_sched = data.get('order_to_sched')
+        weight_kg = data.get('weight_kg')
+        quantity = data.get('quantity')
+        origin_city = data.get('origin_city')
+        destination_city = data.get('destination_city')
+        vendor_name = data.get('vendor_name')
+        
+        # Validation checks
+        if any(v is None for v in [order_to_sched, weight_kg, quantity, origin_city, destination_city, vendor_name]):
+            return JsonResponse({
+                'error': 'Missing required fields: order_to_sched, weight_kg, quantity, origin_city, destination_city, vendor_name'
+            }, status=400)
+            
+        # Encode strings for ML model
+        origin_enc = hash(origin_city) % 100
+        dest_enc = hash(destination_city) % 100
+        vendor_enc = hash(vendor_name) % 50
+            
+        result = PredictionService.predict_delivery_risk(
+            order_to_sched, weight_kg, quantity, origin_enc, dest_enc, vendor_enc
+        )
+        
+        return JsonResponse({
+            'prediction': result
+        }, status=200)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+    except FileNotFoundError as e:
+        return JsonResponse({'error': str(e)}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
