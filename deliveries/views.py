@@ -5,11 +5,17 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Avg, Q
 from .models import Delivery, Vendor
 from .forms import DeliveryForm, ExcelUploadForm
+import os
 import pandas as pd
 import json
-import os
-from django.http import JsonResponse
+import io
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 from .services import PredictionService
 
 
@@ -37,10 +43,10 @@ def delivery_list(request):
     if status_filter:
         deliveries = deliveries.filter(status=status_filter)
 
-    # Filter by vendor
-    vendor_filter = request.GET.get('vendor', '')
-    if vendor_filter:
-        deliveries = deliveries.filter(vendor_id=vendor_filter)
+    # Filter by date (order_date)
+    date_filter = request.GET.get('date', '')
+    if date_filter:
+        deliveries = deliveries.filter(order_date=date_filter)
 
     # Pagination
     paginator = Paginator(deliveries, 10)
@@ -59,7 +65,7 @@ def delivery_list(request):
         'status_choices': status_choices,
         'query': query,
         'status_filter': status_filter,
-        'vendor_filter': vendor_filter,
+        'date_filter': date_filter,
     }
     return render(request, 'deliveries/delivery_list.html', context)
 
@@ -82,7 +88,240 @@ def delivery_create(request):
             return redirect('deliveries:delivery_list')
     else:
         form = DeliveryForm()
-    return render(request, 'deliveries/delivery_form.html', {'form': form})
+    return render(request, 'deliveries/delivery_form.html', {'form': form, 'title': 'Create Delivery'})
+
+
+
+
+@login_required
+def delivery_bulk_update(request):
+    if request.method == 'POST':
+        delivery_ids = request.POST.getlist('delivery_ids')
+        new_status = request.POST.get('bulk_status')
+        if delivery_ids and new_status:
+            Delivery.objects.filter(id__in=delivery_ids).update(status=new_status)
+            messages.success(request, f'✅ Successfully updated status for {len(delivery_ids)} deliveries.')
+        else:
+            messages.warning(request, '⚠️ Please select deliveries and a status to update.')
+    return redirect('deliveries:delivery_list')
+
+
+@login_required
+def export_pdf(request):
+    from reportlab.lib.units import mm
+    from reportlab.platypus import HRFlowable
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+    from reportlab.lib.styles import ParagraphStyle
+    from datetime import datetime
+
+    # ── 1. Apply Filters ─────────────────────────────────────────
+    deliveries = Delivery.objects.select_related('vendor').all()
+    query = request.GET.get('q', '')
+    if query:
+        deliveries = deliveries.filter(
+            Q(tracking_number__icontains=query) |
+            Q(recipient_name__icontains=query) |
+            Q(origin_city__icontains=query) |
+            Q(destination_city__icontains=query)
+        )
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        deliveries = deliveries.filter(status=status_filter)
+    date_filter = request.GET.get('date', '')
+    if date_filter:
+        deliveries = deliveries.filter(order_date=date_filter)
+
+    # ── 2. Setup Response ─────────────────────────────────────────
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="deliveries_export.pdf"'
+
+    # ── 3. Color Palette ──────────────────────────────────────────
+    DARK_BLUE   = colors.HexColor('#0f172a')
+    ACCENT_BLUE = colors.HexColor('#2563eb')
+    LIGHT_GRAY  = colors.HexColor('#f1f5f9')
+    MID_GRAY    = colors.HexColor('#94a3b8')
+    WHITE       = colors.white
+    STATUS_COLORS = {
+        'pending':    colors.HexColor('#f59e0b'),
+        'in_transit': colors.HexColor('#3b82f6'),
+        'delivered':  colors.HexColor('#10b981'),
+        'delayed':    colors.HexColor('#ef4444'),
+        'cancelled':  colors.HexColor('#6b7280'),
+    }
+
+    # ── 4. Custom paragraph styles ────────────────────────────────
+    styles = getSampleStyleSheet()
+    style_title = ParagraphStyle('title', fontName='Helvetica-Bold', fontSize=20,
+                                 textColor=WHITE, alignment=TA_LEFT, leading=24)
+    style_sub   = ParagraphStyle('sub',   fontName='Helvetica',      fontSize=10,
+                                 textColor=MID_GRAY, alignment=TA_LEFT)
+    style_meta  = ParagraphStyle('meta',  fontName='Helvetica',      fontSize=8,
+                                 textColor=MID_GRAY, alignment=TA_RIGHT)
+    style_cell  = ParagraphStyle('cell',  fontName='Helvetica',      fontSize=8,
+                                 textColor=DARK_BLUE, leading=10)
+    style_hdr   = ParagraphStyle('hdr',   fontName='Helvetica-Bold', fontSize=8,
+                                 textColor=WHITE)
+
+    # ── 5. Build PDF with canvas for header/footer ─────────────────
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(letter),
+        rightMargin=25*mm, leftMargin=25*mm,
+        topMargin=40*mm, bottomMargin=20*mm,
+    )
+
+    generated_on = datetime.now().strftime('%d %b %Y, %H:%M')
+    total_records = deliveries.count()
+
+    def draw_header_footer(canvas_obj, doc):
+        canvas_obj.saveState()
+        page_w, page_h = landscape(letter)
+
+        # Header background
+        canvas_obj.setFillColor(DARK_BLUE)
+        canvas_obj.rect(0, page_h - 28*mm, page_w, 28*mm, fill=True, stroke=False)
+
+        # Accent bar
+        canvas_obj.setFillColor(ACCENT_BLUE)
+        canvas_obj.rect(0, page_h - 29*mm, page_w, 1*mm, fill=True, stroke=False)
+
+        # Logo placeholder circle
+        canvas_obj.setFillColor(ACCENT_BLUE)
+        canvas_obj.circle(25*mm, page_h - 14*mm, 8*mm, fill=True, stroke=False)
+        canvas_obj.setFillColor(WHITE)
+        canvas_obj.setFont('Helvetica-Bold', 10)
+        canvas_obj.drawCentredString(25*mm, page_h - 16*mm, 'SDS')
+
+        # Title text
+        canvas_obj.setFillColor(WHITE)
+        canvas_obj.setFont('Helvetica-Bold', 18)
+        canvas_obj.drawString(38*mm, page_h - 13*mm, 'Smart Delivery System')
+        canvas_obj.setFillColor(MID_GRAY)
+        canvas_obj.setFont('Helvetica', 9)
+        canvas_obj.drawString(38*mm, page_h - 20*mm, 'Delivery Export Report')
+
+        # Meta on right side of header
+        canvas_obj.setFont('Helvetica', 8)
+        canvas_obj.setFillColor(MID_GRAY)
+        canvas_obj.drawRightString(page_w - 25*mm, page_h - 12*mm, f'Generated: {generated_on}')
+        canvas_obj.drawRightString(page_w - 25*mm, page_h - 18*mm, f'Total Records: {total_records}')
+
+        # Footer line
+        canvas_obj.setStrokeColor(LIGHT_GRAY)
+        canvas_obj.setLineWidth(0.5)
+        canvas_obj.line(25*mm, 14*mm, page_w - 25*mm, 14*mm)
+
+        # Footer text
+        canvas_obj.setFont('Helvetica', 7)
+        canvas_obj.setFillColor(MID_GRAY)
+        canvas_obj.drawString(25*mm, 9*mm, 'Smart Delivery System — Confidential Report')
+        canvas_obj.drawRightString(page_w - 25*mm, 9*mm, f'Page {doc.page}')
+
+        canvas_obj.restoreState()
+
+    # ── 6. Build Table Data ────────────────────────────────────────
+    headers = ['#', 'Tracking Number', 'Vendor', 'Status', 'Origin → Destination',
+               'Order Date', 'Sched. Date', 'Qty', 'Recipient']
+    table_data = [[Paragraph(h, style_hdr) for h in headers]]
+
+    for idx, d in enumerate(deliveries, start=1):
+        route = f"{d.origin_city} → {d.destination_city}"
+        table_data.append([
+            Paragraph(str(idx), style_cell),
+            Paragraph(d.tracking_number, style_cell),
+            Paragraph(d.vendor.name if d.vendor else '—', style_cell),
+            Paragraph(d.get_status_display(), style_cell),
+            Paragraph(route, style_cell),
+            Paragraph(str(d.order_date), style_cell),
+            Paragraph(str(d.scheduled_date), style_cell),
+            Paragraph(str(d.quantity), style_cell),
+            Paragraph(d.recipient_name, style_cell),
+        ])
+
+    col_widths = [15*mm, 45*mm, 35*mm, 30*mm, 60*mm, 28*mm, 28*mm, 15*mm, 40*mm]
+    table = Table(table_data, colWidths=col_widths, repeatRows=1)
+
+    # Build row-based style with alternating rows and status color
+    tbl_style_cmds = [
+        ('BACKGROUND',    (0, 0), (-1, 0),  DARK_BLUE),
+        ('TEXTCOLOR',     (0, 0), (-1, 0),  WHITE),
+        ('FONTNAME',      (0, 0), (-1, 0),  'Helvetica-Bold'),
+        ('FONTSIZE',      (0, 0), (-1, 0),  8),
+        ('TOPPADDING',    (0, 0), (-1, 0),  8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0),  8),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 5),
+        ('TOPPADDING',    (0, 1), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+        ('FONTNAME',      (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE',      (0, 1), (-1, -1), 7.5),
+        ('LINEBELOW',     (0, 0), (-1, -1), 0.3, colors.HexColor('#e2e8f0')),
+        ('ALIGN',         (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+    ]
+    for row_idx, d in enumerate(deliveries, start=1):
+        bg = LIGHT_GRAY if row_idx % 2 == 0 else WHITE
+        tbl_style_cmds.append(('BACKGROUND', (0, row_idx), (-1, row_idx), bg))
+        # Status cell color
+        sc = STATUS_COLORS.get(d.status, MID_GRAY)
+        tbl_style_cmds.append(('TEXTCOLOR', (3, row_idx), (3, row_idx), sc))
+        tbl_style_cmds.append(('FONTNAME',  (3, row_idx), (3, row_idx), 'Helvetica-Bold'))
+
+    table.setStyle(TableStyle(tbl_style_cmds))
+
+    # ── 7. Assemble elements ───────────────────────────────────────
+    filter_info = []
+    if query:        filter_info.append(f'Search: "{query}"')
+    if status_filter: filter_info.append(f'Status: {status_filter.replace("_"," ").title()}')
+    if date_filter:  filter_info.append(f'Date: {date_filter}')
+    filter_text = '  |  '.join(filter_info) if filter_info else 'Showing all records'
+
+    elements = [
+        Spacer(1, 4*mm),
+        Paragraph(filter_text, ParagraphStyle('fi', fontName='Helvetica', fontSize=8,
+                                              textColor=MID_GRAY, alignment=TA_RIGHT)),
+        Spacer(1, 3*mm),
+        HRFlowable(width='100%', thickness=0.5, color=LIGHT_GRAY),
+        Spacer(1, 4*mm),
+        table,
+    ]
+
+    doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+
+    response.write(buffer.getvalue())
+    return response
+
+
+
+
+def track_delivery(request):
+    """Phase 2B — Public Tracking"""
+    tracking_number = request.GET.get('tracking_number', '').strip()
+    delivery = None
+    if tracking_number:
+        delivery = Delivery.objects.filter(tracking_number=tracking_number).first()
+        if not delivery:
+            messages.warning(request, '⚠️ Tracking number not found.')
+
+    # If AJAX / XHR request (from login page widget), return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if delivery:
+            return JsonResponse({
+                'found': True,
+                'tracking_number': delivery.tracking_number,
+                'status':          delivery.status,
+                'status_display':  delivery.get_status_display(),
+                'recipient_name':  delivery.recipient_name,
+                'origin':          delivery.origin_city,
+                'destination':     delivery.destination_city,
+                'scheduled_date':  str(delivery.scheduled_date),
+                'vendor':          delivery.vendor.name if delivery.vendor else None,
+            })
+        else:
+            return JsonResponse({'found': False})
+
+    return render(request, 'deliveries/track.html', {'delivery': delivery, 'tracking_number': tracking_number})
 
 
 # ─────────────────────────────────────────────
