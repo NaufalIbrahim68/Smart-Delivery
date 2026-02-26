@@ -1,0 +1,129 @@
+﻿{% extends "deliveries/base.html" %}
+
+{% block title %}Deliveries - Smart Delivery System{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="mb-0"><i class="bi bi-list-ul me-2"></i>All Deliveries</h1>
+        <small class="text-muted">{{ deliveries.count }} record(s) found</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'deliveries:import_excel' %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i> Import
+        </a>
+        <a href="{% url 'deliveries:delivery_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i> New Delivery
+        </a>
+    </div>
+</div>
+
+<div class="card table-card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <input type="text" name="q" class="form-control form-control-sm"
+                    placeholder="Search tracking, recipient, city..." value="{{ query }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">-- All Statuses --</option>
+                    {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="vendor" class="form-select form-select-sm">
+                    <option value="">-- All Vendors --</option>
+                    {% for v in vendors %}
+                    <option value="{{ v.id }}" {% if vendor_filter == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+                <a href="{% url 'deliveries:delivery_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Tracking #</th>
+                    <th>Recipient</th>
+                    <th>Vendor</th>
+                    <th>Route</th>
+                    <th>Scheduled</th>
+                    <th>Status</th>
+                    <th>Delay</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for delivery in deliveries %}
+                <tr class="{% if delivery.status == 'delayed' %}risk-high{% endif %}">
+                    <td class="fw-bold">
+                        <a href="{% url 'deliveries:delivery_detail' delivery.pk %}" class="text-decoration-none">
+                            {{ delivery.tracking_number }}
+                        </a>
+                    </td>
+                    <td>{{ delivery.recipient_name }}</td>
+                    <td><small>{{ delivery.vendor.name|default:"--" }}</small></td>
+                    <td>
+                        <small class="text-muted">
+                            {{ delivery.origin_city }} to {{ delivery.destination_city }}
+                        </small>
+                    </td>
+                    <td><small>{{ delivery.scheduled_date }}</small></td>
+                    <td>
+                        <span class="badge badge-{{ delivery.status }} rounded-pill px-3">
+                            {{ delivery.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if delivery.delay_days is not None %}
+                            {% if delivery.delay_days > 0 %}
+                                <span class="text-danger fw-bold">+{{ delivery.delay_days }}d</span>
+                            {% elif delivery.delay_days < 0 %}
+                                <span class="text-success">{{ delivery.delay_days }}d</span>
+                            {% else %}
+                                <span class="text-muted">On time</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'deliveries:delivery_detail' delivery.pk %}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+                        No deliveries found.
+                        {% if query or status_filter or vendor_filter %}
+                            <a href="{% url 'deliveries:delivery_list' %}">Clear filters</a>
+                        {% else %}
+                            <a href="{% url 'deliveries:delivery_create' %}">Add one now!</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
