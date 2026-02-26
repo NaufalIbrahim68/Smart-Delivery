@@ -80,11 +80,7 @@
         <table class="table table-hover mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Tracking #</th>
-                    <th>Recipient</th>
-                    <th>Vendor</th>
-                    <th>Status</th>
-                    <th>Scheduled</th>
+                    <th>Tracking #</th><th>Recipient</th><th>Vendor</th><th>Status</th><th>Scheduled</th>
                 </tr>
             </thead>
             <tbody>
@@ -103,47 +99,56 @@
         </table>
     </div>
 </div>
+
+{# json_script outputs <script type="application/json"> tags — no Django tags inside JS, no red lines in VS Code #}
+{{ status_labels|json_script:"statusLabelsData" }}
+{{ status_values|json_script:"statusValuesData" }}
+{{ vendor_names|json_script:"vendorNamesData" }}
+{{ vendor_totals|json_script:"vendorTotalsData" }}
+{{ vendor_delays|json_script:"vendorDelaysData" }}
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-const statusLabels = {{ status_labels|safe }};
-const statusValues = {{ status_values|safe }};
-const vendorNames  = {{ vendor_names|safe }};
-const vendorTotals = {{ vendor_totals|safe }};
-const vendorDelays = {{ vendor_delays|safe }};
+    // Read data from json_script elements (pure JS, no Django tags inside script block)
+    const statusLabels = JSON.parse(document.getElementById('statusLabelsData').textContent);
+    const statusValues = JSON.parse(document.getElementById('statusValuesData').textContent);
+    const vendorNames  = JSON.parse(document.getElementById('vendorNamesData').textContent);
+    const vendorTotals = JSON.parse(document.getElementById('vendorTotalsData').textContent);
+    const vendorDelays = JSON.parse(document.getElementById('vendorDelaysData').textContent);
 
-new Chart(document.getElementById('statusChart'), {
-    type: 'doughnut',
-    data: {
-        labels: statusLabels,
-        datasets: [{
-            data: statusValues,
-            backgroundColor: ['#f59e0b','#3b82f6','#10b981','#ef4444','#6b7280'],
-            borderWidth: 0,
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { position: 'bottom' } }
-    }
-});
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusValues,
+                backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#6b7280'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
 
-new Chart(document.getElementById('vendorChart'), {
-    type: 'bar',
-    data: {
-        labels: vendorNames,
-        datasets: [
-            { label: 'Total',   data: vendorTotals, backgroundColor: '#3b82f6', borderRadius: 6 },
-            { label: 'Delayed', data: vendorDelays, backgroundColor: '#ef4444', borderRadius: 6 }
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-    }
-});
+    new Chart(document.getElementById('vendorChart'), {
+        type: 'bar',
+        data: {
+            labels: vendorNames,
+            datasets: [
+                { label: 'Total',   data: vendorTotals, backgroundColor: '#3b82f6', borderRadius: 6 },
+                { label: 'Delayed', data: vendorDelays, backgroundColor: '#ef4444', borderRadius: 6 }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
 </script>
 {% endblock %}

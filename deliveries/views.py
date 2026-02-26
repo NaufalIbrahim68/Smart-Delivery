@@ -1,23 +1,25 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Avg, Q
 from .models import Delivery, Vendor
 from .forms import DeliveryForm, ExcelUploadForm
 import pandas as pd
+import json
 import os
 
 
-# ─────────────────────────────────────────────
-#  PHASE 2 — Delivery Management
-# ─────────────────────────────────────────────
+# -----------------------------------------------
+#  PHASE 2 -- Delivery Management
+# -----------------------------------------------
 
 @login_required
 def delivery_list(request):
-    """Step 5 + 8 — List all deliveries with search and filter."""
+    """Step 5 + 8 -- List all deliveries with search, filter, and pagination."""
     deliveries = Delivery.objects.select_related('vendor').all()
 
-    # Step 8: Search
+    # Search
     query = request.GET.get('q', '')
     if query:
         deliveries = deliveries.filter(
@@ -27,21 +29,38 @@ def delivery_list(request):
             Q(destination_city__icontains=query)
         )
 
-    # Step 8: Filter by status
+    # Filter by status
     status_filter = request.GET.get('status', '')
     if status_filter:
         deliveries = deliveries.filter(status=status_filter)
 
-    # Step 8: Filter by vendor
+    # Filter by vendor
     vendor_filter = request.GET.get('vendor', '')
     if vendor_filter:
         deliveries = deliveries.filter(vendor_id=vendor_filter)
+
+    # Pagination
+    per_page = request.GET.get('per_page', '10')
+    try:
+        per_page = int(per_page)
+        if per_page not in [10, 25, 50, 100]:
+            per_page = 10
+    except (ValueError, TypeError):
+        per_page = 10
+
+    paginator = Paginator(deliveries, per_page)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
 
     vendors = Vendor.objects.filter(is_active=True)
     status_choices = Delivery.STATUS_CHOICES
 
     context = {
-        'deliveries': deliveries,
+        'deliveries': page_obj,
+        'page_obj': page_obj,
+        'paginator': paginator,
+        'per_page': per_page,
+        'total_count': paginator.count,
         'vendors': vendors,
         'status_choices': status_choices,
         'query': query,
@@ -184,7 +203,7 @@ def dashboard(request):
         .order_by('-total')[:10]
     )
 
-    # Build chart data for Chart.js
+    # Build chart data for Chart.js — use json.dumps() for valid JSON (not Python list syntax)
     status_labels = [s[1] for s in Delivery.STATUS_CHOICES]
     status_values = [status_map.get(code, 0) for code, _ in Delivery.STATUS_CHOICES]
 
@@ -200,12 +219,12 @@ def dashboard(request):
         'status_counts': status_counts,
         'vendor_stats': vendor_stats,
         'recent_deliveries': recent_deliveries,
-        # Chart.js data
-        'status_labels':  status_labels,
-        'status_values':  status_values,
-        'vendor_names':   vendor_names,
-        'vendor_totals':  vendor_totals,
-        'vendor_delays':  vendor_delays,
+        # Chart.js data — passed as Python objects, json_script handles encoding in template
+        'status_labels': status_labels,
+        'status_values': status_values,
+        'vendor_names':  vendor_names,
+        'vendor_totals': vendor_totals,
+        'vendor_delays': vendor_delays,
     }
     return render(request, 'deliveries/dashboard.html', context)
 
@@ -244,6 +263,7 @@ def predict_delay(request):
             rows.append({
                 'order_to_sched': order_to_sched,
                 'weight_kg':      float(d.weight_kg),
+                'quantity':       d.quantity,
                 'origin_enc':     origin_enc,
                 'dest_enc':       dest_enc,
                 'vendor_enc':     vendor_enc,
@@ -251,7 +271,7 @@ def predict_delay(request):
             })
 
         df = pd.DataFrame(rows)
-        X = df[['order_to_sched', 'weight_kg', 'origin_enc', 'dest_enc', 'vendor_enc']]
+        X = df[['order_to_sched', 'weight_kg', 'quantity', 'origin_enc', 'dest_enc', 'vendor_enc']]
         y = df['is_delayed']
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -276,16 +296,19 @@ def predict_delay(request):
                 destination  = request.POST.get('destination_city', '')
                 vendor_name  = request.POST.get('vendor_name', '')
                 weight       = float(request.POST.get('weight_kg', 1))
+                quantity     = int(request.POST.get('quantity', 1))
 
-                features = [[
-                    (sched_date - order_date).days,
-                    weight,
-                    hash(origin) % 100,
-                    hash(destination) % 100,
-                    hash(vendor_name) % 50,
-                ]]
-                result = model.predict(features)[0]
-                proba  = model.predict_proba(features)[0]
+                # Use DataFrame with feature names to match training format (avoids sklearn warning)
+                features_df = pd.DataFrame([{
+                    'order_to_sched': (sched_date - order_date).days,
+                    'weight_kg':      weight,
+                    'quantity':       quantity,
+                    'origin_enc':     hash(origin) % 100,
+                    'dest_enc':       hash(destination) % 100,
+                    'vendor_enc':     hash(vendor_name) % 50,
+                }])
+                result = model.predict(features_df)[0]
+                proba  = model.predict_proba(features_df)[0]
                 prediction_result = {
                     'label':       'DELAYED' if result == 1 else 'ON TIME',
                     'is_delayed':  result == 1,

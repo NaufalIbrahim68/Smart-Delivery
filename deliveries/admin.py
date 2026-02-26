@@ -30,6 +30,7 @@ class DeliveryAdmin(admin.ModelAdmin):
         'scheduled_date',
         'actual_delivery_date',
         'weight_kg',
+        'quantity',
     )
     list_filter = ('status', 'vendor', 'origin_city', 'destination_city')
     search_fields = ('tracking_number', 'recipient_name', 'origin_city', 'destination_city')
@@ -48,7 +49,7 @@ class DeliveryAdmin(admin.ModelAdmin):
             'fields': ('order_date', 'scheduled_date', 'actual_delivery_date')
         }),
         ('Package & Recipient', {
-            'fields': ('weight_kg', 'recipient_name', 'notes')
+            'fields': ('weight_kg', 'quantity', 'recipient_name', 'notes')
         }),
     )
 

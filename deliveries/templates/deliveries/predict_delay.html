@@ -72,11 +72,13 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">Origin City</label>
-                            <input type="text" name="origin_city" class="form-control form-control-sm" placeholder="e.g. Jakarta" required>
+                            <input type="text" name="origin_city" class="form-control form-control-sm"
+                                placeholder="e.g. Jakarta" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">Destination City</label>
-                            <input type="text" name="destination_city" class="form-control form-control-sm" placeholder="e.g. Surabaya" required>
+                            <input type="text" name="destination_city" class="form-control form-control-sm"
+                                placeholder="e.g. Surabaya" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">Vendor Name</label>
@@ -85,9 +87,15 @@
                                 {% for v in vendors %}<option>{{ v.name }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold small">Weight (kg)</label>
-                            <input type="number" name="weight_kg" class="form-control form-control-sm" step="0.01" min="0.1" value="1.0" required>
+                            <input type="number" name="weight_kg" class="form-control form-control-sm" step="0.01"
+                                min="0.1" value="1.0" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">Qty</label>
+                            <input type="number" name="quantity" class="form-control form-control-sm" min="1" value="1"
+                                required>
                         </div>
                         <div class="col-12">
                             {% if model_trained %}
@@ -109,8 +117,10 @@
     <!-- Result Card -->
     {% if prediction_result %}
     <div class="col-12">
-        <div class="card table-card {% if prediction_result.is_delayed %}border-danger{% else %}border-success{% endif %}">
-            <div class="card-header fw-bold {% if prediction_result.is_delayed %}text-danger{% else %}text-success{% endif %}">
+        <div
+            class="card table-card {% if prediction_result.is_delayed %}border-danger{% else %}border-success{% endif %}">
+            <div
+                class="card-header fw-bold {% if prediction_result.is_delayed %}text-danger{% else %}text-success{% endif %}">
                 {% if prediction_result.is_delayed %}
                 <i class="bi bi-exclamation-triangle-fill me-1"></i>
                 {% else %}
@@ -119,7 +129,8 @@
                 Prediction Result
             </div>
             <div class="card-body text-center py-4">
-                <div class="display-4 fw-bold mb-2 {% if prediction_result.is_delayed %}text-danger{% else %}text-success{% endif %}">
+                <div
+                    class="display-4 fw-bold mb-2 {% if prediction_result.is_delayed %}text-danger{% else %}text-success{% endif %}">
                     {% if prediction_result.is_delayed %}
                     LIKELY DELAYED
                     {% else %}

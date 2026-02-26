@@ -87,6 +87,10 @@ class Delivery(models.Model):
         decimal_places=2,
         help_text="Package weight in kilograms"
     )
+    quantity = models.PositiveIntegerField(
+        default=1,
+        help_text="Number of items in this delivery"
+    )
     recipient_name = models.CharField(max_length=150)
     notes = models.TextField(blank=True, null=True)
 

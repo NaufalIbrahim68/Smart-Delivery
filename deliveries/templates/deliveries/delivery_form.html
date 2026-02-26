@@ -52,11 +52,20 @@
                 </div>
 
                 <!-- Weight -->
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label fw-bold" for="{{ form.weight_kg.id_for_label }}">Weight (kg)</label>
                     {{ form.weight_kg }}
                     {% if form.weight_kg.errors %}
                     <div class="text-danger small">{{ form.weight_kg.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Quantity -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold" for="{{ form.quantity.id_for_label }}">Qty</label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                    <div class="text-danger small">{{ form.quantity.errors }}</div>
                     {% endif %}
                 </div>
 
