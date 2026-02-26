@@ -105,6 +105,16 @@ class Delivery(models.Model):
     def __str__(self):
         return f"{self.tracking_number} — {self.recipient_name} [{self.get_status_display()}]"
 
+    def save(self, *args, **kwargs):
+        """
+        Auto-lock status to 'delayed' if actual delivery date exceeds scheduled date.
+        Once delayed, the status cannot be changed to anything else.
+        """
+        if self.actual_delivery_date and self.scheduled_date:
+            if self.actual_delivery_date > self.scheduled_date:
+                self.status = self.STATUS_DELAYED
+        super().save(*args, **kwargs)
+
     @property
     def is_delayed(self):
         """Returns True if actual delivery date exceeded the scheduled date."""
