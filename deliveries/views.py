@@ -40,15 +40,7 @@ def delivery_list(request):
         deliveries = deliveries.filter(vendor_id=vendor_filter)
 
     # Pagination
-    per_page = request.GET.get('per_page', '10')
-    try:
-        per_page = int(per_page)
-        if per_page not in [10, 25, 50, 100]:
-            per_page = 10
-    except (ValueError, TypeError):
-        per_page = 10
-
-    paginator = Paginator(deliveries, per_page)
+    paginator = Paginator(deliveries, 10)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
@@ -59,7 +51,6 @@ def delivery_list(request):
         'deliveries': page_obj,
         'page_obj': page_obj,
         'paginator': paginator,
-        'per_page': per_page,
         'total_count': paginator.count,
         'vendors': vendors,
         'status_choices': status_choices,
@@ -109,7 +100,7 @@ def import_excel(request):
                 required_cols = [
                     'tracking_number', 'recipient_name', 'origin_city',
                     'destination_city', 'order_date', 'scheduled_date',
-                    'weight_kg', 'status'
+                    'weight_kg', 'quantity', 'status'
                 ]
                 missing = [c for c in required_cols if c not in df.columns]
                 if missing:
@@ -148,6 +139,7 @@ def import_excel(request):
                             actual_delivery_date=pd.to_datetime(row['actual_delivery_date']).date()
                                 if pd.notna(row.get('actual_delivery_date')) else None,
                             weight_kg=float(row.get('weight_kg', 0)),
+                            quantity=int(row['quantity']),
                             status=str(row.get('status', 'pending')).strip().lower(),
                             notes=str(row.get('notes', '')).strip() if pd.notna(row.get('notes')) else '',
                         )
