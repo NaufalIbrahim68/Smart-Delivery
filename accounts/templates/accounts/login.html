@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -7,17 +7,87 @@
     <title>Login — Smart Delivery System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Prevent flash: apply saved theme immediately -->
+    <script>
+        (function () {
+            const t = localStorage.getItem('sds-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
     <style>
         * { box-sizing: border-box; }
+
+        /* ── Theme Variables ── */
+        [data-theme="light"] {
+            --login-body-bg: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            --login-panel-bg: #fff;
+            --login-title-color: #0f172a;
+            --login-subtitle-color: #94a3b8;
+            --login-label-color: #374151;
+            --login-input-bg: #fff;
+            --login-input-border: #dee2e6;
+            --login-input-color: #1e293b;
+            --login-igt-bg: #f8fafc;
+            --login-igt-border: #dee2e6;
+            --toggle-bg: rgba(255,255,255,.15);
+            --toggle-color: #f1f5f9;
+        }
+
+        [data-theme="dark"] {
+            --login-body-bg: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+            --login-panel-bg: #1e293b;
+            --login-title-color: #f1f5f9;
+            --login-subtitle-color: #64748b;
+            --login-label-color: #cbd5e1;
+            --login-input-bg: #334155;
+            --login-input-border: #475569;
+            --login-input-color: #e2e8f0;
+            --login-igt-bg: #0f172a;
+            --login-igt-border: #475569;
+            --toggle-bg: rgba(255,255,255,.1);
+            --toggle-color: #60a5fa;
+        }
+
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            background: var(--login-body-bg);
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: 'Segoe UI', sans-serif;
             padding: 1rem;
+            transition: background 0.4s;
         }
+
+        /* ── Theme Toggle (floating) ── */
+        .theme-toggle-float {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 999;
+            background: var(--toggle-bg);
+            border: 1px solid rgba(255,255,255,.15);
+            backdrop-filter: blur(8px);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--toggle-color);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .theme-toggle-float:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
+        }
+        .theme-toggle-float:active i { transform: rotate(180deg); }
+        .theme-toggle-float i { transition: transform 0.4s; }
+
         .main-card {
             width: 100%;
             max-width: 900px;
@@ -167,19 +237,32 @@
         /* ── RIGHT: Login Panel ── */
         .login-panel {
             width: 50%;
-            background: #fff;
+            background: var(--login-panel-bg);
             padding: 2.5rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            transition: background 0.4s;
         }
-        .login-panel h2 { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin-bottom: 0.25rem; }
-        .login-panel > p { color: #94a3b8; font-size: 0.83rem; margin-bottom: 1.8rem; }
+        .login-panel h2 { font-size: 1.4rem; font-weight: 700; color: var(--login-title-color); transition: color 0.3s; margin-bottom: 0.25rem; }
+        .login-panel > p { color: var(--login-subtitle-color); font-size: 0.83rem; margin-bottom: 1.8rem; transition: color 0.3s; }
 
-        .form-label { font-weight: 600; font-size: 0.82rem; color: #374151; }
-        .input-group-text { background: #f8fafc; border-right: 0; }
-        .form-control { border-left: 0; }
-        .form-control:focus { box-shadow: none; border-color: #3b82f6; }
+        .form-label { font-weight: 600; font-size: 0.82rem; color: var(--login-label-color); transition: color 0.3s; }
+        .input-group-text {
+            background: var(--login-igt-bg);
+            border-right: 0;
+            border-color: var(--login-igt-border);
+            color: var(--login-subtitle-color);
+            transition: all 0.3s;
+        }
+        .form-control {
+            border-left: 0;
+            background: var(--login-input-bg) !important;
+            border-color: var(--login-input-border) !important;
+            color: var(--login-input-color) !important;
+            transition: all 0.3s;
+        }
+        .form-control:focus { box-shadow: none; border-color: #3b82f6 !important; }
         .btn-login {
             background: linear-gradient(135deg, #1e40af, #3b82f6);
             border: none;
@@ -192,6 +275,20 @@
         }
         .btn-login:hover { opacity: 0.9; color: #fff; }
 
+        /* ── Dark mode: password toggle btn ── */
+        [data-theme="dark"] .btn-outline-secondary {
+            color: #94a3b8;
+            border-color: var(--login-input-border);
+            background: var(--login-input-bg);
+        }
+        [data-theme="dark"] .btn-outline-secondary:hover {
+            background: #475569;
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
         @media (max-width: 640px) {
             .main-card { flex-direction: column; }
             .track-panel, .login-panel { width: 100%; }
@@ -200,6 +297,12 @@
 </head>
 
 <body>
+
+<!-- Theme Toggle Button -->
+<button class="theme-toggle-float" id="themeToggle" title="Toggle Dark/Light Mode">
+    <i class="bi bi-moon-fill"></i>
+</button>
+
 <div class="main-card">
 
     <!-- ── LEFT: Tracking Panel ── -->
@@ -346,6 +449,23 @@
     document.getElementById('trackingInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') trackPackage();
     });
+
+    // ── Theme Toggle ──
+    (function () {
+        const toggle = document.getElementById('themeToggle');
+        const icon = toggle.querySelector('i');
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('sds-theme', theme);
+            icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        icon.className = current === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        toggle.addEventListener('click', function () {
+            const now = document.documentElement.getAttribute('data-theme');
+            applyTheme(now === 'dark' ? 'light' : 'dark');
+        });
+    })();
 </script>
 </body>
 </html>

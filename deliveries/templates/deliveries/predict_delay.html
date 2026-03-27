@@ -1,4 +1,4 @@
-﻿{% extends "deliveries/base.html" %}
+{% extends "deliveries/base.html" %}
 
 {% block title %}Delay Prediction - Smart Delivery System{% endblock %}
 
@@ -128,24 +128,60 @@
                 {% endif %}
                 Prediction Result
             </div>
-            <div class="card-body text-center py-4">
-                <div
-                    class="display-4 fw-bold mb-2 {% if prediction_result.is_delayed %}text-danger{% else %}text-success{% endif %}">
-                    {% if prediction_result.is_delayed %}
-                    LIKELY DELAYED
-                    {% else %}
-                    LIKELY ON TIME
-                    {% endif %}
+            <div class="card-body py-4">
+                <div class="row align-items-center">
+                    <!-- Prediction Label -->
+                    <div class="col-md-5 text-center mb-3 mb-md-0">
+                        <div
+                            class="display-5 fw-bold mb-2 {% if prediction_result.is_delayed %}text-danger{% else %}text-success{% endif %}">
+                            {% if prediction_result.is_delayed %}
+                            LIKELY DELAYED
+                            {% else %}
+                            LIKELY ON TIME
+                            {% endif %}
+                        </div>
+                        <p class="text-muted fs-5 mb-0">
+                            Model confidence: <strong>{{ prediction_result.confidence }}%</strong>
+                        </p>
+                        {% if prediction_result.is_delayed %}
+                        <div class="alert alert-danger d-inline-block mt-3 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Consider contacting the vendor or adjusting the scheduled date.
+                        </div>
+                        {% endif %}
+                    </div>
+                    <!-- Input Data Summary -->
+                    <div class="col-md-7">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="text-muted" style="width:40%"><i class="bi bi-geo-alt me-1"></i> Route</td>
+                                    <td class="fw-bold">{{ prediction_result.origin }} → {{ prediction_result.destination }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="bi bi-calendar-event me-1"></i> Order Date</td>
+                                    <td class="fw-bold">{{ prediction_result.order_date }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="bi bi-calendar-check me-1"></i> Scheduled Date</td>
+                                    <td class="fw-bold">{{ prediction_result.sched_date }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="bi bi-truck me-1"></i> Vendor</td>
+                                    <td class="fw-bold">{{ prediction_result.vendor }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="bi bi-box-seam me-1"></i> Weight</td>
+                                    <td class="fw-bold">{{ prediction_result.weight }} kg</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="bi bi-stack me-1"></i> Quantity</td>
+                                    <td class="fw-bold">{{ prediction_result.quantity }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <p class="text-muted fs-5">
-                    Model confidence: <strong>{{ prediction_result.confidence }}%</strong>
-                </p>
-                {% if prediction_result.is_delayed %}
-                <div class="alert alert-danger d-inline-block mt-2">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Consider contacting the vendor or adjusting the scheduled date.
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

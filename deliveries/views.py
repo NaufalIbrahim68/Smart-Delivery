@@ -326,6 +326,23 @@ def import_excel(request):
             try:
                 df = pd.read_excel(excel_file, engine='openpyxl')
 
+                # Map human-readable Excel headers to database field names
+                column_mapping = {
+                    'Tracking Number': 'tracking_number',
+                    'Recipient Name': 'recipient_name',
+                    'Origin City': 'origin_city',
+                    'Destination City': 'destination_city',
+                    'Order Date': 'order_date',
+                    'Scheduled Date': 'scheduled_date',
+                    'Weight (kg)': 'weight_kg',
+                    'Quantity': 'quantity',
+                    'Status': 'status',
+                    'Vendor': 'vendor',
+                    'Actual Delivery Date': 'actual_delivery_date',
+                    'Notes': 'notes',
+                }
+                df.rename(columns=column_mapping, inplace=True)
+
                 # Step 12: Validate required columns
                 required_cols = [
                     'tracking_number', 'recipient_name', 'origin_city',
@@ -535,6 +552,13 @@ def predict_delay(request):
                     'label':       'DELAYED' if result == 1 else 'ON TIME',
                     'is_delayed':  result == 1,
                     'confidence':  round(max(proba) * 100, 2),
+                    'order_date':  order_date,
+                    'sched_date':  sched_date,
+                    'origin':      origin,
+                    'destination': destination,
+                    'vendor':      vendor_name or 'Unknown',
+                    'weight':      weight,
+                    'quantity':    quantity,
                 }
             except Exception as e:
                 messages.error(request, f'❌ Prediction error: {e}')

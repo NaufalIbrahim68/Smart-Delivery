@@ -1,32 +1,192 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Track Delivery — Smart Delivery System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Prevent flash -->
+    <script>
+        (function () {
+            const t = localStorage.getItem('sds-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
     <style>
-        body { background: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
-        .track-card { max-width: 650px; margin: 40px auto; border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        .hero { background: #0f172a; color: white; padding: 3rem 1rem; text-align: center; }
+        /* ── Theme Variables ── */
+        [data-theme="light"] {
+            --track-body-bg: #f1f5f9;
+            --track-text: #1e293b;
+            --track-text-muted: #64748b;
+            --track-card-bg: #fff;
+            --track-card-border: #e2e8f0;
+            --track-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --track-input-bg: #fff;
+            --track-input-border: #dee2e6;
+            --track-input-color: #1e293b;
+            --track-info-bg: #f8fafc;
+            --track-info-border: #e2e8f0;
+            --track-timeline-line: #e2e8f0;
+            --track-timeline-bg: #fff;
+            --toggle-bg: rgba(0,0,0,.08);
+            --toggle-color: #f59e0b;
+        }
+
+        [data-theme="dark"] {
+            --track-body-bg: #0f172a;
+            --track-text: #e2e8f0;
+            --track-text-muted: #94a3b8;
+            --track-card-bg: #1e293b;
+            --track-card-border: #334155;
+            --track-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --track-input-bg: #334155;
+            --track-input-border: #475569;
+            --track-input-color: #e2e8f0;
+            --track-info-bg: #0f172a;
+            --track-info-border: #334155;
+            --track-timeline-line: #334155;
+            --track-timeline-bg: #1e293b;
+            --toggle-bg: rgba(255,255,255,.1);
+            --toggle-color: #60a5fa;
+        }
+
+        body {
+            background: var(--track-body-bg);
+            font-family: 'Segoe UI', sans-serif;
+            color: var(--track-text);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ── Theme Toggle (floating) ── */
+        .theme-toggle-float {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 999;
+            background: var(--toggle-bg);
+            border: 1px solid rgba(255,255,255,.15);
+            backdrop-filter: blur(8px);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--toggle-color);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .theme-toggle-float:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
+        }
+        .theme-toggle-float i { transition: transform 0.4s; }
+        .theme-toggle-float:active i { transform: rotate(180deg); }
+
+        .track-card {
+            max-width: 650px;
+            margin: 40px auto;
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--track-card-shadow);
+            background: var(--track-card-bg);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        .hero {
+            background: #0f172a;
+            color: white;
+            padding: 3rem 1rem;
+            text-align: center;
+        }
         .hero h1 { font-weight: 700; }
         .hero span { color: #3b82f6; }
-        .timeline { list-style: none; padding: 0; position: relative; margin-top: 20px;}
-        .timeline:before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; }
+
+        .text-muted { color: var(--track-text-muted) !important; }
+        .text-dark { color: var(--track-text) !important; }
+
+        /* ── Track card form ── */
+        .form-control {
+            background: var(--track-input-bg) !important;
+            border-color: var(--track-input-border) !important;
+            color: var(--track-input-color) !important;
+            transition: all 0.3s;
+        }
+        .form-control:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25) !important;
+        }
+
+        /* ── Info row ── */
+        .bg-light {
+            background-color: var(--track-info-bg) !important;
+        }
+        .border {
+            border-color: var(--track-info-border) !important;
+        }
+        .border-end {
+            border-color: var(--track-info-border) !important;
+        }
+
+        /* ── Timeline ── */
+        .timeline { list-style: none; padding: 0; position: relative; margin-top: 20px; }
+        .timeline:before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--track-timeline-line);
+        }
         .timeline-item { position: relative; padding-left: 45px; margin-bottom: 25px; }
         .timeline-item:last-child { margin-bottom: 0; }
-        .timeline-item::before { content: ''; position: absolute; left: 9px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 3px solid #fff; box-shadow: 0 0 0 2px #3b82f6; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 9px; top: 4px;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 3px solid var(--track-card-bg);
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
         .timeline-item.completed::before { background: #10b981; box-shadow: 0 0 0 2px #10b981; }
         .timeline-item.pending::before { background: #cbd5e1; box-shadow: 0 0 0 2px #cbd5e1; }
+
+        .timeline-item h6 { color: var(--track-text); }
+
+        /* ── Timeline box ── */
+        .timeline-box {
+            background: var(--track-timeline-bg);
+            border-color: var(--track-card-border) !important;
+            transition: background 0.3s;
+        }
+
         .badge-pending { background: #f59e0b; color: #000; }
         .badge-in_transit { background: #3b82f6; color: #fff; }
         .badge-delivered { background: #10b981; color: #fff; }
         .badge-delayed { background: #ef4444; color: #fff; }
         .badge-cancelled { background: #6b7280; color: #fff; }
+
+        hr { border-color: var(--track-card-border); }
+
+        /* ── Dark btn-close ── */
+        [data-theme="dark"] .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
     </style>
 </head>
 <body>
+
+<!-- Theme Toggle Button -->
+<button class="theme-toggle-float" id="themeToggle" title="Toggle Dark/Light Mode">
+    <i class="bi bi-moon-fill"></i>
+</button>
 
 <div class="hero mb-4">
     <h1>Smart<span>Delivery</span> Tracking</h1>
@@ -61,7 +221,7 @@
             
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h4 class="mb-1 fw-bold text-dark">{{ delivery.tracking_number }}</h4>
+                    <h4 class="mb-1 fw-bold">{{ delivery.tracking_number }}</h4>
                     <p class="text-muted mb-0"><i class="bi bi-shop me-1"></i>Vendor: <strong>{{ delivery.vendor.name|default:"Unknown" }}</strong></p>
                 </div>
                 <span class="badge badge-{{ delivery.status }} p-2 px-3 fw-bold rounded-pill shadow-sm">{{ delivery.get_status_display }}</span>
@@ -70,20 +230,20 @@
             <div class="row bg-light rounded p-3 mb-5 g-3 text-center border">
                 <div class="col-4 border-end">
                     <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">Origin</small>
-                    <strong class="d-block text-truncate mt-1 fs-5 text-dark">{{ delivery.origin_city }}</strong>
+                    <strong class="d-block text-truncate mt-1 fs-5">{{ delivery.origin_city }}</strong>
                 </div>
                 <div class="col-4 border-end">
                     <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">Destination</small>
-                    <strong class="d-block text-truncate mt-1 fs-5 text-dark">{{ delivery.destination_city }}</strong>
+                    <strong class="d-block text-truncate mt-1 fs-5">{{ delivery.destination_city }}</strong>
                 </div>
                 <div class="col-4">
                     <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">Package</small>
-                    <strong class="d-block text-truncate mt-1 text-dark">{{ delivery.weight_kg }}kg <span class="text-muted fw-normal">({{ delivery.quantity }}x)</span></strong>
+                    <strong class="d-block text-truncate mt-1">{{ delivery.weight_kg }}kg <span class="text-muted fw-normal">({{ delivery.quantity }}x)</span></strong>
                 </div>
             </div>
 
-            <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-signpost-2-fill me-2 text-primary"></i>Delivery Timeline</h5>
-            <div class="bg-white border rounded p-4 shadow-sm">
+            <h5 class="fw-bold mb-4"><i class="bi bi-signpost-2-fill me-2 text-primary"></i>Delivery Timeline</h5>
+            <div class="timeline-box border rounded p-4 shadow-sm">
                 <ul class="timeline mb-0">
                     <li class="timeline-item completed">
                         <h6 class="mb-1 fw-bold">Order Placed</h6>
@@ -124,5 +284,23 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ── Theme Toggle ──
+    (function () {
+        const toggle = document.getElementById('themeToggle');
+        const icon = toggle.querySelector('i');
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('sds-theme', theme);
+            icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        icon.className = current === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        toggle.addEventListener('click', function () {
+            const now = document.documentElement.getAttribute('data-theme');
+            applyTheme(now === 'dark' ? 'light' : 'dark');
+        });
+    })();
+</script>
 </body>
 </html>

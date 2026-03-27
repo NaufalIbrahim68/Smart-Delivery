@@ -147,6 +147,22 @@ data = [
 
 df = pd.DataFrame(data)
 
+# Rename columns to human-readable Excel headers
+df.rename(columns={
+    'tracking_number': 'Tracking Number',
+    'recipient_name': 'Recipient Name',
+    'origin_city': 'Origin City',
+    'destination_city': 'Destination City',
+    'order_date': 'Order Date',
+    'scheduled_date': 'Scheduled Date',
+    'weight_kg': 'Weight (kg)',
+    'quantity': 'Quantity',
+    'status': 'Status',
+    'vendor': 'Vendor',
+    'actual_delivery_date': 'Actual Delivery Date',
+    'notes': 'Notes',
+}, inplace=True)
+
 # Export to Excel
 file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sample_import.xlsx')
 df.to_excel(file_path, index=False)
