@@ -453,6 +453,62 @@ def dashboard(request):
     # Recent deliveries
     recent_deliveries = Delivery.objects.select_related('vendor').order_by('-created_at')[:5]
 
+    # ── NEW: Monthly Delivery Trend (last 6 months) ──
+    from django.db.models.functions import TruncMonth
+    from collections import OrderedDict
+    from datetime import datetime, timedelta
+
+    six_months_ago = datetime.now().date().replace(day=1) - timedelta(days=180)
+    trend_qs = (
+        Delivery.objects
+        .filter(order_date__gte=six_months_ago)
+        .annotate(month=TruncMonth('order_date'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )
+    trend_labels = [t['month'].strftime('%b %Y') for t in trend_qs]
+    trend_values = [t['count'] for t in trend_qs]
+
+    # ── NEW: On-Time Delivery Rate ──
+    completed = Delivery.objects.exclude(actual_delivery_date=None).exclude(scheduled_date=None)
+    completed_count = completed.count()
+    if completed_count > 0:
+        on_time_count = sum(
+            1 for d in completed
+            if d.actual_delivery_date <= d.scheduled_date
+        )
+        on_time_rate = round((on_time_count / completed_count) * 100, 1)
+    else:
+        on_time_count = 0
+        on_time_rate = 0
+
+    # ── NEW: Average Delivery Time (order_date → actual_delivery_date) ──
+    if completed_count > 0:
+        total_days = sum(
+            (d.actual_delivery_date - d.order_date).days
+            for d in completed
+        )
+        avg_delivery_days = round(total_days / completed_count, 1)
+    else:
+        avg_delivery_days = 0
+
+    # Per-vendor average delivery time
+    vendor_avg_data = {}
+    for d in completed.select_related('vendor'):
+        vname = d.vendor.name if d.vendor else 'Unknown'
+        days = (d.actual_delivery_date - d.order_date).days
+        if vname not in vendor_avg_data:
+            vendor_avg_data[vname] = {'total_days': 0, 'count': 0}
+        vendor_avg_data[vname]['total_days'] += days
+        vendor_avg_data[vname]['count'] += 1
+
+    vendor_avg_names = list(vendor_avg_data.keys())
+    vendor_avg_values = [
+        round(vendor_avg_data[v]['total_days'] / vendor_avg_data[v]['count'], 1)
+        for v in vendor_avg_names
+    ]
+
     context = {
         'total': total,
         'status_counts': status_counts,
@@ -464,6 +520,15 @@ def dashboard(request):
         'vendor_names':  vendor_names,
         'vendor_totals': vendor_totals,
         'vendor_delays': vendor_delays,
+        # NEW analytics
+        'trend_labels': trend_labels,
+        'trend_values': trend_values,
+        'on_time_rate': on_time_rate,
+        'on_time_count': on_time_count,
+        'completed_count': completed_count,
+        'avg_delivery_days': avg_delivery_days,
+        'vendor_avg_names': vendor_avg_names,
+        'vendor_avg_values': vendor_avg_values,
     }
     return render(request, 'deliveries/dashboard.html', context)
 

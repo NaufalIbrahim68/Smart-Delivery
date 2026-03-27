@@ -8,7 +8,7 @@
     <small class="text-muted">Delivery analytics overview</small>
 </div>
 
-<!-- Stat Cards -->
+<!-- Stat Cards Row 1 — Status Counts -->
 <div class="row g-3 mb-4">
     {% for item in status_counts %}
     <div class="col-6 col-md-3">
@@ -50,7 +50,61 @@
     </div>
 </div>
 
-<!-- Charts -->
+<!-- Stat Cards Row 2 — NEW KPI Cards -->
+<div class="row g-3 mb-4">
+    <!-- On-Time Rate -->
+    <div class="col-md-4">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-box bg-success bg-opacity-10 text-success" style="width:56px;height:56px;font-size:1.6rem;">
+                    <i class="bi bi-bullseye"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold text-success">{{ on_time_rate }}%</div>
+                    <div class="text-muted small">On-Time Delivery Rate</div>
+                    <div class="text-muted" style="font-size:0.7rem;">{{ on_time_count }} of {{ completed_count }} deliveries</div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="progress" style="height:6px;border-radius:3px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width:{{ on_time_rate }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Average Delivery Time -->
+    <div class="col-md-4">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-box bg-info bg-opacity-10 text-info" style="width:56px;height:56px;font-size:1.6rem;">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold" style="color:var(--text-color);">{{ avg_delivery_days }} <span class="fs-6 fw-normal text-muted">days</span></div>
+                    <div class="text-muted small">Avg. Delivery Time</div>
+                    <div class="text-muted" style="font-size:0.7rem;">Order to delivery (completed only)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Completed Deliveries -->
+    <div class="col-md-4">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-box bg-primary bg-opacity-10 text-primary" style="width:56px;height:56px;font-size:1.6rem;">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div>
+                    <div class="fs-3 fw-bold" style="color:var(--text-color);">{{ completed_count }}</div>
+                    <div class="text-muted small">Completed Deliveries</div>
+                    <div class="text-muted" style="font-size:0.7rem;">With actual delivery date recorded</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 1 — Status + Vendor -->
 <div class="row g-4 mb-4">
     <div class="col-md-5">
         <div class="card table-card h-100">
@@ -65,6 +119,26 @@
             <div class="card-header">Vendor Performance</div>
             <div class="card-body">
                 <canvas id="vendorChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 2 — Trend + Avg Delivery per Vendor -->
+<div class="row g-4 mb-4">
+    <div class="col-md-7">
+        <div class="card table-card h-100">
+            <div class="card-header"><i class="bi bi-graph-up me-1"></i> Monthly Delivery Trend</div>
+            <div class="card-body">
+                <canvas id="trendChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card table-card h-100">
+            <div class="card-header"><i class="bi bi-stopwatch me-1"></i> Avg. Delivery Time by Vendor</div>
+            <div class="card-body">
+                <canvas id="avgChart" height="220"></canvas>
             </div>
         </div>
     </div>
@@ -100,60 +174,55 @@
     </div>
 </div>
 
-{# json_script outputs <script type="application/json"> tags — no Django tags inside JS, no red lines in VS Code #}
+{# json_script outputs <script type="application/json"> tags #}
 {{ status_labels|json_script:"statusLabelsData" }}
 {{ status_values|json_script:"statusValuesData" }}
 {{ vendor_names|json_script:"vendorNamesData" }}
 {{ vendor_totals|json_script:"vendorTotalsData" }}
 {{ vendor_delays|json_script:"vendorDelaysData" }}
+{{ trend_labels|json_script:"trendLabelsData" }}
+{{ trend_values|json_script:"trendValuesData" }}
+{{ vendor_avg_names|json_script:"vendorAvgNamesData" }}
+{{ vendor_avg_values|json_script:"vendorAvgValuesData" }}
 
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // Read data from json_script elements (pure JS, no Django tags inside script block)
-    const statusLabels = JSON.parse(document.getElementById('statusLabelsData').textContent);
-    const statusValues = JSON.parse(document.getElementById('statusValuesData').textContent);
-    const vendorNames  = JSON.parse(document.getElementById('vendorNamesData').textContent);
-    const vendorTotals = JSON.parse(document.getElementById('vendorTotalsData').textContent);
-    const vendorDelays = JSON.parse(document.getElementById('vendorDelaysData').textContent);
+    // ── Read data ──
+    const statusLabels   = JSON.parse(document.getElementById('statusLabelsData').textContent);
+    const statusValues   = JSON.parse(document.getElementById('statusValuesData').textContent);
+    const vendorNames    = JSON.parse(document.getElementById('vendorNamesData').textContent);
+    const vendorTotals   = JSON.parse(document.getElementById('vendorTotalsData').textContent);
+    const vendorDelays   = JSON.parse(document.getElementById('vendorDelaysData').textContent);
+    const trendLabels    = JSON.parse(document.getElementById('trendLabelsData').textContent);
+    const trendValues    = JSON.parse(document.getElementById('trendValuesData').textContent);
+    const vendorAvgNames  = JSON.parse(document.getElementById('vendorAvgNamesData').textContent);
+    const vendorAvgValues = JSON.parse(document.getElementById('vendorAvgValuesData').textContent);
 
-    // Get theme-aware text color
+    // ── Theme helpers ──
     function getThemeTextColor() {
-        const theme = document.documentElement.getAttribute('data-theme');
-        return theme === 'dark' ? '#e2e8f0' : '#334155';
+        return document.documentElement.getAttribute('data-theme') === 'dark' ? '#e2e8f0' : '#334155';
     }
-
     function getThemeGridColor() {
-        const theme = document.documentElement.getAttribute('data-theme');
-        return theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+        return document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.1)';
     }
 
     const textColor = getThemeTextColor();
     const gridColor = getThemeGridColor();
 
+    // ── 1. Status Doughnut ──
     const statusChart = new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
         data: {
             labels: statusLabels,
-            datasets: [{
-                data: statusValues,
-                backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#6b7280'],
-                borderWidth: 0,
-            }]
+            datasets: [{ data: statusValues, backgroundColor: ['#f59e0b','#3b82f6','#10b981','#ef4444','#6b7280'], borderWidth: 0 }]
         },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: textColor }
-                }
-            }
-        }
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
     });
 
+    // ── 2. Vendor Bar ──
     const vendorChart = new Chart(document.getElementById('vendorChart'), {
         type: 'bar',
         data: {
@@ -165,42 +234,79 @@
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: { color: textColor }
-                }
-            },
+            plugins: { legend: { position: 'top', labels: { color: textColor } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1, color: textColor },
-                    grid: { color: gridColor }
-                },
-                x: {
-                    ticks: { color: textColor },
-                    grid: { color: gridColor }
-                }
+                y: { beginAtZero: true, ticks: { stepSize: 1, color: textColor }, grid: { color: gridColor } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
             }
         }
     });
 
-    // Listen for theme changes and update charts
-    const observer = new MutationObserver(function () {
-        const newText = getThemeTextColor();
-        const newGrid = getThemeGridColor();
-
-        statusChart.options.plugins.legend.labels.color = newText;
-        vendorChart.options.plugins.legend.labels.color = newText;
-        vendorChart.options.scales.y.ticks.color = newText;
-        vendorChart.options.scales.y.grid.color = newGrid;
-        vendorChart.options.scales.x.ticks.color = newText;
-        vendorChart.options.scales.x.grid.color = newGrid;
-
-        statusChart.update();
-        vendorChart.update();
+    // ── 3. Monthly Trend Line Chart ──
+    const trendChart = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Deliveries',
+                data: trendValues,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.1)',
+                borderWidth: 3,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                tension: 0.3,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, color: textColor }, grid: { color: gridColor } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
+            }
+        }
     });
 
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    // ── 4. Avg Delivery Time per Vendor (Horizontal Bar) ──
+    const avgChart = new Chart(document.getElementById('avgChart'), {
+        type: 'bar',
+        data: {
+            labels: vendorAvgNames,
+            datasets: [{
+                label: 'Avg Days',
+                data: vendorAvgValues,
+                backgroundColor: ['#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e'],
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { color: textColor, callback: v => v + 'd' }, grid: { color: gridColor } },
+                y: { ticks: { color: textColor }, grid: { display: false } }
+            }
+        }
+    });
+
+    // ── Theme observer — update ALL charts ──
+    new MutationObserver(function () {
+        const t = getThemeTextColor(), g = getThemeGridColor();
+        const charts = [statusChart, vendorChart, trendChart, avgChart];
+        charts.forEach(c => {
+            if (c.options.plugins?.legend?.labels) c.options.plugins.legend.labels.color = t;
+            Object.values(c.options.scales || {}).forEach(s => {
+                if (s.ticks) s.ticks.color = t;
+                if (s.grid) s.grid.color = g;
+            });
+            c.update();
+        });
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 </script>
 {% endblock %}
